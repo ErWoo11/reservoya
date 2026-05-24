@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a0a00">
+  <meta name="description" content="Reserva mesa en los mejores restaurantes y bares">
+  <title>MesaYa — Reservas en Restaurantes</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="logo">
+        <span class="logo-icon">🍽</span>
+        <span class="logo-text">MesaYa</span>
+      </a>
+      <nav class="header-nav">
+        <a href="index.html" class="nav-link active">Restaurantes</a>
+        <a href="#como-funciona" class="nav-link">Cómo funciona</a>
+        <a href="admin/login.html" class="nav-link btn-outline">Acceso Gestión</a>
+      </nav>
+      <button class="hamburger" id="hamburger" aria-label="Menú">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <p class="hero-eyebrow">Reserva en segundos</p>
+      <h1 class="hero-title">Tu mesa perfecta<br><em>te espera</em></h1>
+      <p class="hero-subtitle">Descubre los mejores bares y restaurantes y reserva al instante, sin llamadas ni esperas</p>
+      <div class="search-bar" id="searchBar">
+        <div class="search-field">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Buscar restaurante, cocina…" autocomplete="off">
+        </div>
+        <div class="search-field">
+          <span class="search-icon">📍</span>
+          <input type="text" id="cityInput" placeholder="Ciudad o zona">
+        </div>
+        <button class="search-btn" onclick="filterRestaurants()">Buscar</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="filters-bar">
+    <div class="container">
+      <div class="filter-chips" id="filterChips">
+        <button class="chip active" data-filter="all">Todos</button>
+        <button class="chip" data-filter="tapas">Tapas</button>
+        <button class="chip" data-filter="cocina-española">Española</button>
+        <button class="chip" data-filter="fusion">Fusión</button>
+        <button class="chip" data-filter="mariscos">Mariscos</button>
+        <button class="chip" data-filter="carnes">Carnes</button>
+        <button class="chip" data-filter="vegetariano">Vegetariano</button>
+        <button class="chip" data-filter="internacional">Internacional</button>
+      </div>
+    </div>
+  </section>
+
+  <main class="main-content">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Restaurantes disponibles</h2>
+        <p class="results-count" id="resultsCount">Cargando…</p>
+      </div>
+      <div class="restaurants-grid" id="restaurantsGrid">
+        <!-- Populated by JS -->
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Cargando restaurantes…</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <section class="how-it-works" id="como-funciona">
+    <div class="container">
+      <h2 class="section-title centered">¿Cómo funciona?</h2>
+      <div class="steps-grid">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-icon">🔍</div>
+          <h3>Elige tu restaurante</h3>
+          <p>Explora nuestra selección de bares y restaurantes con fichas detalladas, fotos y valoraciones reales.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-icon">📅</div>
+          <h3>Selecciona fecha y hora</h3>
+          <p>Elige el día, la hora y el número de comensales. Ve la disponibilidad en tiempo real.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-icon">✅</div>
+          <h3>Confirma tu reserva</h3>
+          <p>Introduce tus datos y recibe la confirmación al instante. Sin llamadas, sin esperas.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <span class="logo-text">🍽 MesaYa</span>
+          <p>La plataforma de reservas para bares y restaurantes de nueva generación.</p>
+        </div>
+        <div class="footer-links">
+          <h4>Restaurantes</h4>
+          <a href="admin/login.html">Únete a MesaYa</a>
+          <a href="admin/login.html">Panel de gestión</a>
+        </div>
+        <div class="footer-links">
+          <h4>Legal</h4>
+          <a href="#">Privacidad</a>
+          <a href="#">Términos de uso</a>
+          <a href="#">Cookies</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2025 MesaYa · Todos los derechos reservados</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Restaurant Card Template -->
+  <template id="restaurantCardTpl">
+    <article class="restaurant-card">
+      <a class="card-image-link" href="#">
+        <div class="card-image">
+          <img src="" alt="" loading="lazy">
+          <div class="card-badge"></div>
+        </div>
+      </a>
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="card-cuisine"></span>
+          <span class="card-rating">⭐ <span></span></span>
+        </div>
+        <h3 class="card-name"><a href="#"></a></h3>
+        <p class="card-location">📍 <span></span></p>
+        <p class="card-description"></p>
+        <div class="card-footer">
+          <span class="card-price"></span>
+          <a href="#" class="btn-reserve">Reservar mesa</a>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <!-- Firebase -->
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/index.js"></script>
+  <script>
+    // PWA install
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    }
+    // Hamburger
+    document.getElementById('hamburger').addEventListener('click', function(){
+      document.querySelector('.header-nav').classList.toggle('open');
+    });
+    // Filter chips
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', function(){
+        document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+        this.classList.add('active');
+        window._activeFilter = this.dataset.filter;
+        if(window.renderRestaurants) window.renderRestaurants();
+      });
+    });
+  </script>
+</body>
+</html>
