@@ -17,7 +17,7 @@ const firebaseConfig = {
 };
 
 // ─── Demo mode (datos de muestra cuando no hay Firebase) ───
-export const DEMO_MODE = firebaseConfig.apiKey === "AIzaSyBzidosSZRxKmjMIrg0zAjYRt_rbohcHLU";
+export const DEMO_MODE = false;
 
 const app = DEMO_MODE ? null : initializeApp(firebaseConfig);
 export const db = DEMO_MODE ? null : getFirestore(app);
