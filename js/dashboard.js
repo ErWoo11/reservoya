@@ -1,5 +1,5 @@
 // js/dashboard.js
-import { db, DEMO_MODE, DEMO_RESTAURANTS } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
 import {
   collection, query, where, getDocs, addDoc, updateDoc, doc,
   orderBy, serverTimestamp, getDoc
@@ -9,7 +9,9 @@ import {
 const adminData = JSON.parse(sessionStorage.getItem('mesaya_admin') || 'null');
 if (!adminData) { location.href = 'login.html'; }
 
-const restId = adminData?.restaurantId || 'rest1';
+const restId = adminData?.restaurantId;
+if (!restId) { location.href = 'login.html'; }
+
 let restaurant = null;
 let allBookings = [];
 let calMonth = new Date().getMonth();
@@ -34,51 +36,40 @@ function statusBadge(s) {
   return `<span class="badge badge-${s}">${labels[s] || s}</span>`;
 }
 
-// ── Demo bookings ─────────────────────────────────────────────────
-function getDemoBookings() {
-  const t = today();
-  const [y, m] = t.split('-');
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  const tom = tomorrow.toISOString().split('T')[0];
-
-  return [
-    { id: 'b1', code: 'MY7F3K2A', restaurantId: restId, date: t, time: '13:00', guests: 4, status: 'confirmed', client: { name: 'María', lastname: 'García', email: 'm.garcia@email.com', phone: '+34 600 111 222' }, notes: 'Cumpleaños', createdAt: t },
-    { id: 'b2', code: 'MY9X1P5Q', restaurantId: restId, date: t, time: '14:30', guests: 2, status: 'confirmed', client: { name: 'Carlos', lastname: 'López', email: 'carlos@email.com', phone: '+34 600 333 444' }, notes: '', createdAt: t },
-    { id: 'b3', code: 'MYAB2C4D', restaurantId: restId, date: t, time: '21:00', guests: 6, status: 'pending', client: { name: 'Ana', lastname: 'Martínez', email: 'ana@email.com', phone: '+34 600 555 666' }, notes: 'Mesa con vista', createdAt: t },
-    { id: 'b4', code: 'MYZZ8W3V', restaurantId: restId, date: tom, time: '14:00', guests: 3, status: 'confirmed', client: { name: 'Javier', lastname: 'Ruiz', email: 'j.ruiz@email.com', phone: '+34 600 777 888' }, notes: '', createdAt: t },
-    { id: 'b5', code: 'MYQQ1R2S', restaurantId: restId, date: tom, time: '21:30', guests: 8, status: 'confirmed', client: { name: 'Laura', lastname: 'Sánchez', email: 'laura@email.com', phone: '+34 600 999 000' }, notes: 'Aniversario', createdAt: t },
-    { id: 'b6', code: 'MYEE5T6U', restaurantId: restId, date: `${y}-${m}-15`, time: '20:00', guests: 2, status: 'completed', client: { name: 'Pedro', lastname: 'Fernández', email: 'pedro@email.com', phone: '+34 600 111 333' }, notes: '', createdAt: `${y}-${m}-01` },
-  ];
-}
-
-// ── Load data ─────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────
 async function init() {
-  // Set date
   const now = new Date();
   document.getElementById('dashDate').textContent = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('todayDate2').textContent = formatDate(today());
 
-  // Restaurant
-  if (DEMO_MODE) {
-    restaurant = DEMO_RESTAURANTS.find(r => r.id === restId) || DEMO_RESTAURANTS[0];
-  } else {
-    try {
-      const snap = await getDoc(doc(db, 'restaurants', restId));
-      restaurant = snap.exists() ? { id: snap.id, ...snap.data() } : DEMO_RESTAURANTS[0];
-    } catch(e) { restaurant = DEMO_RESTAURANTS[0]; }
+  // Cargar restaurante
+  try {
+    const snap = await getDoc(doc(db, 'restaurants', restId));
+    if (!snap.exists()) {
+      showToast('Restaurante no encontrado en Firestore', 'error');
+      return;
+    }
+    restaurant = { id: snap.id, ...snap.data() };
+  } catch(e) {
+    console.error('Error cargando restaurante:', e);
+    showToast('Error de conexión con Firebase', 'error');
+    return;
   }
 
-  document.getElementById('sidebarRestName').textContent = restaurant?.name || 'Mi Restaurante';
+  document.getElementById('sidebarRestName').textContent = restaurant.name;
 
-  // Bookings
-  if (DEMO_MODE) {
-    allBookings = getDemoBookings();
-  } else {
-    try {
-      const q = query(collection(db, 'bookings'), where('restaurantId', '==', restId), orderBy('date', 'desc'));
-      const snap = await getDocs(q);
-      allBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    } catch(e) { allBookings = getDemoBookings(); }
+  // Cargar reservas
+  try {
+    const q = query(
+      collection(db, 'bookings'),
+      where('restaurantId', '==', restId),
+      orderBy('date', 'desc')
+    );
+    const snap = await getDocs(q);
+    allBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {
+    console.error('Error cargando reservas:', e);
+    showToast('Error cargando reservas', 'error');
   }
 
   renderDashboard();
@@ -104,12 +95,11 @@ function renderDashboard() {
   document.getElementById('statSemana').textContent = thisWeek.length;
   document.getElementById('statMes').textContent = thisMonth.length;
 
-  // Today's bookings
-  renderBookingList('todayBookings', todayB.sort((a,b)=>a.time.localeCompare(b.time)));
-  
-  // Upcoming (next 7 days, not today)
-  const upcoming = allBookings.filter(b => b.date > t && b.status !== 'cancelled')
-    .sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time))
+  renderBookingList('todayBookings', todayB.sort((a,b) => a.time.localeCompare(b.time)));
+
+  const upcoming = allBookings
+    .filter(b => b.date > t && b.status !== 'cancelled')
+    .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
     .slice(0, 8);
   renderBookingList('upcomingBookings', upcoming, true);
 }
@@ -135,7 +125,7 @@ function renderBookingList(elId, bookings, showDate = false) {
   `).join('');
 }
 
-// ── All bookings table ────────────────────────────────────────────
+// ── Tabla de reservas ─────────────────────────────────────────────
 window.loadAllBookings = function() {
   const dateFilter = document.getElementById('filterDate').value;
   const statusFilter = document.getElementById('filterStatus').value;
@@ -174,25 +164,25 @@ window.loadAllBookings = function() {
 
 function renderAllBookings() { loadAllBookings(); }
 
-// ── Status change ─────────────────────────────────────────────────
+// ── Cambiar estado ────────────────────────────────────────────────
 window.changeStatus = async function(id, newStatus) {
-  const booking = allBookings.find(b => b.id === id);
-  if (!booking) return;
-  
-  if (!DEMO_MODE && db) {
-    try {
-      await updateDoc(doc(db, 'bookings', id), { status: newStatus });
-    } catch(e) { showToast('Error al actualizar', 'error'); return; }
+  try {
+    await updateDoc(doc(db, 'bookings', id), { status: newStatus });
+  } catch(e) {
+    console.error('Error actualizando estado:', e);
+    showToast('Error al actualizar', 'error');
+    return;
   }
-  
-  booking.status = newStatus;
-  showToast(`Reserva ${newStatus === 'confirmed' ? 'confirmada' : newStatus === 'cancelled' ? 'cancelada' : 'completada'}`);
+  const booking = allBookings.find(b => b.id === id);
+  if (booking) booking.status = newStatus;
+  const msgs = { confirmed: 'Reserva confirmada', cancelled: 'Reserva cancelada', completed: 'Reserva completada' };
+  showToast(msgs[newStatus] || 'Estado actualizado');
   renderDashboard();
   renderAllBookings();
   renderCalendar();
 };
 
-// ── Calendar ──────────────────────────────────────────────────────
+// ── Calendario ────────────────────────────────────────────────────
 function renderCalendar() {
   const cal = document.getElementById('calendar');
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -200,34 +190,30 @@ function renderCalendar() {
 
   const first = new Date(calYear, calMonth, 1);
   const last = new Date(calYear, calMonth + 1, 0);
-  const startDay = first.getDay(); // 0=Sun
+  const startDay = first.getDay();
 
   const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   let html = `<div class="cal-grid">`;
   days.forEach(d => html += `<div class="cal-day-name">${d}</div>`);
 
-  // Count bookings per day
   const byDay = {};
   allBookings.filter(b => b.status !== 'cancelled').forEach(b => {
-    if (b.date) { byDay[b.date] = (byDay[b.date] || 0) + 1; }
+    if (b.date) byDay[b.date] = (byDay[b.date] || 0) + 1;
   });
 
-  for (let i = 0; i < startDay; i++) {
-    html += `<div class="cal-cell other-month"></div>`;
-  }
+  for (let i = 0; i < startDay; i++) html += `<div class="cal-cell other-month"></div>`;
 
   const todayStr = today();
   for (let d = 1; d <= last.getDate(); d++) {
     const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const count = byDay[dateStr] || 0;
     const isToday = dateStr === todayStr;
-    const dotsHtml = count > 0 ? `<div class="cal-dots">${Array(Math.min(count,5)).fill('<div class="cal-dot"></div>').join('')}${count > 5 ? `<span style="font-size:0.7rem;color:var(--amber)">+${count-5}</span>` : ''}</div>` : '';
+    const dots = count > 0
+      ? `<div class="cal-dots">${Array(Math.min(count,5)).fill('<div class="cal-dot"></div>').join('')}${count > 5 ? `<span style="font-size:0.7rem;color:var(--amber)">+${count-5}</span>` : ''}</div>`
+      : '';
     html += `<div class="cal-cell${isToday ? ' today' : ''}${count > 0 ? ' has-bookings' : ''}" onclick="filterToDate('${dateStr}')">
-      <div class="cal-num">${d}</div>
-      ${dotsHtml}
-    </div>`;
+      <div class="cal-num">${d}</div>${dots}</div>`;
   }
-
   html += '</div>';
   cal.innerHTML = html;
 }
@@ -247,7 +233,7 @@ document.getElementById('calNext').addEventListener('click', () => {
   renderCalendar();
 });
 
-// ── Config ────────────────────────────────────────────────────────
+// ── Configuración ─────────────────────────────────────────────────
 function fillConfig() {
   if (!restaurant) return;
   document.getElementById('cfgName').value = restaurant.name || '';
@@ -261,7 +247,6 @@ function fillConfig() {
   document.getElementById('cfgMaxParty').value = restaurant.maxPartySize || '';
   document.getElementById('cfgOpens').value = restaurant.schedule?.opens || '';
   document.getElementById('cfgCloses').value = restaurant.schedule?.closes || '';
-  
   document.querySelectorAll('.cfgClosed').forEach(cb => {
     cb.checked = (restaurant.schedule?.closedDays || []).includes(parseInt(cb.value));
   });
@@ -286,10 +271,12 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     }
   };
 
-  if (!DEMO_MODE && db) {
-    try {
-      await updateDoc(doc(db, 'restaurants', restId), data);
-    } catch(e) { showToast('Error al guardar', 'error'); return; }
+  try {
+    await updateDoc(doc(db, 'restaurants', restId), data);
+  } catch(e) {
+    console.error('Error guardando configuración:', e);
+    showToast('Error al guardar', 'error');
+    return;
   }
 
   Object.assign(restaurant, data);
@@ -297,7 +284,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
   showToast('Configuración guardada ✓');
 });
 
-// ── New booking modal ─────────────────────────────────────────────
+// ── Nueva reserva manual ──────────────────────────────────────────
 window.showNewReservaModal = function() {
   document.getElementById('newReservaModal').style.display = 'flex';
   document.getElementById('mDate').min = today();
@@ -324,35 +311,36 @@ document.getElementById('saveReservaBtn').addEventListener('click', async () => 
   }
 
   const code = genCode();
-  const booking = {
-    id: 'b' + Date.now(),
+  const bookingData = {
     restaurantId: restId,
-    restaurantName: restaurant?.name,
+    restaurantName: restaurant.name,
     date, time, guests,
     client: { name, lastname, email, phone },
     notes, code, status: 'confirmed',
-    createdAt: DEMO_MODE ? new Date().toISOString() : serverTimestamp()
+    createdAt: serverTimestamp()
   };
 
-  if (!DEMO_MODE && db) {
-    try {
-      const ref = await addDoc(collection(db, 'bookings'), booking);
-      booking.id = ref.id;
-    } catch(e) { showToast('Error al guardar', 'error'); return; }
+  let newId;
+  try {
+    const ref = await addDoc(collection(db, 'bookings'), bookingData);
+    newId = ref.id;
+  } catch(e) {
+    console.error('Error guardando reserva:', e);
+    showToast('Error al guardar', 'error');
+    return;
   }
 
-  allBookings.unshift(booking);
+  allBookings.unshift({ ...bookingData, id: newId });
   closeModal();
   showToast(`Reserva creada: ${code}`);
   renderDashboard();
   renderAllBookings();
   renderCalendar();
-  // Clear form
   ['mName','mLastname','mEmail','mPhone','mDate','mTime','mNotes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('mGuests').value = 2;
 });
 
-// ── Navigation ────────────────────────────────────────────────────
+// ── Navegación ────────────────────────────────────────────────────
 const viewTitles = { dashboard: 'Dashboard', reservas: 'Reservas', calendario: 'Calendario', configuracion: 'Configuración' };
 
 function switchView(v) {

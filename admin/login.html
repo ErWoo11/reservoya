@@ -37,10 +37,6 @@
 
         <button class="btn-primary full-width" id="loginBtn">Entrar al panel →</button>
 
-        <div class="login-divider"><span>o accede en modo demo</span></div>
-
-        <button class="btn-demo" id="demoBtn">🎭 Demo sin Firebase</button>
-
         <p class="login-footer">
           ¿Quieres unirte? <a href="mailto:hola@mesaya.es">Contacta con nosotros</a>
         </p>
@@ -49,11 +45,14 @@
   </div>
 
   <script type="module">
-    import { auth, db, DEMO_MODE } from '../js/firebase-config.js';
+    import { auth, db } from '../js/firebase-config.js';
     import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Si ya está logado, redirigir
+    if (sessionStorage.getItem('mesaya_admin')) location.href = 'dashboard.html';
 
     const loginBtn = document.getElementById('loginBtn');
-    const demoBtn = document.getElementById('demoBtn');
     const errorEl = document.getElementById('loginError');
 
     function showError(msg) {
@@ -65,38 +64,50 @@
       const email = document.getElementById('loginEmail').value.trim();
       const pass = document.getElementById('loginPassword').value;
       if (!email || !pass) { showError('Completa email y contraseña'); return; }
-      
-      loginBtn.disabled = true; loginBtn.textContent = 'Accediendo…';
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Accediendo…';
       errorEl.style.display = 'none';
 
-      if (DEMO_MODE || !auth) {
-        // Demo with fake credentials
-        sessionStorage.setItem('mesaya_admin', JSON.stringify({ email, role: 'owner', restaurantId: 'rest1', demo: true }));
-        location.href = 'dashboard.html';
-        return;
-      }
-      
       try {
         const cred = await signInWithEmailAndPassword(auth, email, pass);
-        sessionStorage.setItem('mesaya_admin', JSON.stringify({ uid: cred.user.uid, email }));
+        const uid = cred.user.uid;
+
+        // Buscar el restaurante asociado al usuario en Firestore
+        const q = query(collection(db, 'restaurants'), where('ownerUid', '==', uid));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          showError('No se encontró un restaurante asociado a este usuario.');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Entrar al panel →';
+          return;
+        }
+
+        const restaurantDoc = snap.docs[0];
+        sessionStorage.setItem('mesaya_admin', JSON.stringify({
+          uid,
+          email,
+          restaurantId: restaurantDoc.id
+        }));
         location.href = 'dashboard.html';
       } catch(e) {
-        const msg = e.code === 'auth/invalid-credential' ? 'Email o contraseña incorrectos' : 'Error al acceder. Inténtalo de nuevo.';
-        showError(msg);
-        loginBtn.disabled = false; loginBtn.textContent = 'Entrar al panel →';
+        console.error(e);
+        const msgs = {
+          'auth/invalid-credential': 'Email o contraseña incorrectos',
+          'auth/user-not-found': 'Usuario no encontrado',
+          'auth/wrong-password': 'Contraseña incorrecta',
+          'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.'
+        };
+        showError(msgs[e.code] || 'Error al acceder. Inténtalo de nuevo.');
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Entrar al panel →';
       }
     });
 
-    demoBtn.addEventListener('click', () => {
-      sessionStorage.setItem('mesaya_admin', JSON.stringify({ email: 'demo@mesaya.es', role: 'owner', restaurantId: 'rest1', demo: true }));
-      location.href = 'dashboard.html';
+    document.getElementById('loginPassword').addEventListener('keydown', e => {
+      if (e.key === 'Enter') loginBtn.click();
     });
-
-    // Enter key
-    document.getElementById('loginPassword').addEventListener('keydown', e => { if(e.key==='Enter') loginBtn.click(); });
-
-    // Already logged in?
-    if (sessionStorage.getItem('mesaya_admin')) location.href = 'dashboard.html';
   </script>
 </body>
 </html>
