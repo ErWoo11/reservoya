@@ -28,6 +28,10 @@
       <a href="#" class="sidebar-link active" data-view="dashboard">
         <span class="sidebar-link-icon">📊</span> Dashboard
       </a>
+      <a href="#" class="sidebar-link" data-view="pendientes">
+        <span class="sidebar-link-icon">🔔</span> Pendientes
+        <span class="badge-count" id="pendingBadge" style="display:none"></span>
+      </a>
       <a href="#" class="sidebar-link" data-view="reservas">
         <span class="sidebar-link-icon">📅</span> Reservas
       </a>
@@ -36,6 +40,9 @@
       </a>
       <a href="#" class="sidebar-link" data-view="configuracion">
         <span class="sidebar-link-icon">⚙️</span> Configuración
+      </a>
+      <a href="#" class="sidebar-link" data-view="horarios">
+        <span class="sidebar-link-icon">🕐</span> Horarios
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -59,14 +66,21 @@
       </div>
     </header>
 
-    <!-- Dashboard view -->
+    <!-- ── DASHBOARD ── -->
     <div id="view-dashboard" class="dash-view">
       <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🔔</div>
+          <div class="stat-body">
+            <div class="stat-num" id="statPendientes">—</div>
+            <div class="stat-label">Pendientes hoy</div>
+          </div>
+        </div>
         <div class="stat-card">
           <div class="stat-icon">📅</div>
           <div class="stat-body">
             <div class="stat-num" id="statHoy">—</div>
-            <div class="stat-label">Reservas hoy</div>
+            <div class="stat-label">Confirmadas hoy</div>
           </div>
         </div>
         <div class="stat-card">
@@ -79,13 +93,6 @@
         <div class="stat-card">
           <div class="stat-icon">📆</div>
           <div class="stat-body">
-            <div class="stat-num" id="statSemana">—</div>
-            <div class="stat-label">Esta semana</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">✅</div>
-          <div class="stat-body">
             <div class="stat-num" id="statMes">—</div>
             <div class="stat-label">Este mes</div>
           </div>
@@ -95,31 +102,52 @@
       <div class="dash-grid-2">
         <div class="dash-card">
           <div class="dash-card-header">
-            <h3>Reservas de hoy</h3>
+            <h3>⏳ Solicitudes pendientes</h3>
             <span id="todayDate2" class="text-muted small"></span>
           </div>
-          <div id="todayBookings" class="bookings-list"></div>
+          <div id="pendingBookings" class="bookings-list"></div>
         </div>
         <div class="dash-card">
           <div class="dash-card-header">
-            <h3>Próximas reservas</h3>
+            <h3>✅ Confirmadas hoy</h3>
           </div>
-          <div id="upcomingBookings" class="bookings-list"></div>
+          <div id="todayBookings" class="bookings-list"></div>
         </div>
       </div>
     </div>
 
-    <!-- Reservas view -->
+    <!-- ── PENDIENTES ── -->
+    <div id="view-pendientes" class="dash-view" style="display:none">
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <h3>Solicitudes pendientes de confirmación</h3>
+          <button class="btn-secondary" style="padding:8px 16px;font-size:0.85rem" onclick="loadPendingView()">↺ Actualizar</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="bookings-table">
+            <thead>
+              <tr>
+                <th>Código</th><th>Cliente</th><th>Fecha</th><th>Hora</th>
+                <th>Personas</th><th>Notas</th><th>Solicitud</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="pendingTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RESERVAS ── -->
     <div id="view-reservas" class="dash-view" style="display:none">
       <div class="dash-card">
         <div class="dash-card-header">
           <h3>Todas las reservas</h3>
           <div class="filters-row">
             <input type="date" id="filterDate" class="form-input" style="width:160px">
-            <select id="filterStatus" class="form-input" style="width:150px">
+            <select id="filterStatus" class="form-input" style="width:160px">
               <option value="">Todos los estados</option>
-              <option value="confirmed">Confirmadas</option>
               <option value="pending">Pendientes</option>
+              <option value="confirmed">Confirmadas</option>
               <option value="cancelled">Canceladas</option>
               <option value="completed">Completadas</option>
             </select>
@@ -127,7 +155,7 @@
           </div>
         </div>
         <div class="table-wrapper">
-          <table class="bookings-table" id="bookingsTable">
+          <table class="bookings-table">
             <thead>
               <tr>
                 <th>Código</th><th>Cliente</th><th>Fecha</th><th>Hora</th>
@@ -140,7 +168,7 @@
       </div>
     </div>
 
-    <!-- Calendar view -->
+    <!-- ── CALENDARIO ── -->
     <div id="view-calendario" class="dash-view" style="display:none">
       <div class="dash-card">
         <div class="dash-card-header">
@@ -155,11 +183,11 @@
       </div>
     </div>
 
-    <!-- Config view -->
+    <!-- ── CONFIGURACIÓN ── -->
     <div id="view-configuracion" class="dash-view" style="display:none">
-      <div class="dash-card" style="max-width:680px">
+      <div class="dash-card" style="max-width:720px">
         <div class="dash-card-header"><h3>Configuración del restaurante</h3></div>
-        <form id="configForm" class="config-form">
+        <div class="config-form">
           <div class="form-row">
             <div class="form-group"><label class="form-label">Nombre del restaurante</label><input type="text" id="cfgName" class="form-input"></div>
             <div class="form-group"><label class="form-label">Tipo de cocina</label><input type="text" id="cfgCuisine" class="form-input"></div>
@@ -170,7 +198,7 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">Teléfono</label><input type="tel" id="cfgPhone" class="form-input"></div>
-            <div class="form-group"><label class="form-label">Email</label><input type="email" id="cfgEmail" class="form-input"></div>
+            <div class="form-group"><label class="form-label">Email contacto</label><input type="email" id="cfgEmail" class="form-input"></div>
           </div>
           <div class="form-group"><label class="form-label">Descripción</label><textarea id="cfgDesc" class="form-input form-textarea" rows="3"></textarea></div>
           <div class="form-row">
@@ -178,27 +206,52 @@
             <div class="form-group"><label class="form-label">Máx. personas/reserva</label><input type="number" id="cfgMaxParty" class="form-input" min="1"></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Apertura</label><input type="time" id="cfgOpens" class="form-input"></div>
-            <div class="form-group"><label class="form-label">Cierre</label><input type="time" id="cfgCloses" class="form-input"></div>
+            <div class="form-group"><label class="form-label">Mín. personas/reserva</label><input type="number" id="cfgMinParty" class="form-input" min="1" value="1"></div>
+            <div class="form-group"><label class="form-label">Días máx. anticipación</label><input type="number" id="cfgAdvanceDays" class="form-input" min="1" value="30"></div>
           </div>
-          <div class="form-group"><label class="form-label">Días cerrado</label>
-            <div class="days-selector">
-              <label><input type="checkbox" value="0" class="cfgClosed"> Dom</label>
-              <label><input type="checkbox" value="1" class="cfgClosed"> Lun</label>
-              <label><input type="checkbox" value="2" class="cfgClosed"> Mar</label>
-              <label><input type="checkbox" value="3" class="cfgClosed"> Mié</label>
-              <label><input type="checkbox" value="4" class="cfgClosed"> Jue</label>
-              <label><input type="checkbox" value="5" class="cfgClosed"> Vie</label>
-              <label><input type="checkbox" value="6" class="cfgClosed"> Sáb</label>
+          <div class="form-group"><label class="form-label">URL imagen</label><input type="url" id="cfgImage" class="form-input" placeholder="https://…"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Precio</label>
+              <select id="cfgPrice" class="form-input">
+                <option value="€">€ Económico</option>
+                <option value="€€">€€ Moderado</option>
+                <option value="€€€">€€€ Precio medio-alto</option>
+                <option value="€€€€">€€€€ Premium</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Categoría</label>
+              <select id="cfgCategory" class="form-input">
+                <option value="tapas">Tapas</option>
+                <option value="cocina-española">Cocina española</option>
+                <option value="fusion">Fusión</option>
+                <option value="mariscos">Mariscos</option>
+                <option value="carnes">Carnes</option>
+                <option value="vegetariano">Vegetariano</option>
+                <option value="internacional">Internacional</option>
+              </select>
             </div>
           </div>
           <button type="button" class="btn-primary" id="saveConfigBtn">Guardar cambios</button>
-        </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- New booking modal -->
+    <!-- ── HORARIOS ── -->
+    <div id="view-horarios" class="dash-view" style="display:none">
+      <div class="dash-card" style="max-width:820px">
+        <div class="dash-card-header">
+          <h3>Horarios y tramos de reserva</h3>
+          <button class="btn-primary" style="padding:8px 20px;font-size:0.85rem" id="saveScheduleBtn">Guardar horarios</button>
+        </div>
+        <div class="schedule-editor" id="scheduleEditor">
+          <!-- Generado por JS -->
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dashboard-main -->
+
+  <!-- Modal nueva reserva -->
   <div id="newReservaModal" class="modal-overlay" style="display:none">
     <div class="modal-box">
       <div class="modal-header">
@@ -206,23 +259,35 @@
         <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Nombre</label><input id="mName" class="form-input" placeholder="Nombre"></div>
+        <div class="form-group"><label class="form-label">Nombre *</label><input id="mName" class="form-input" placeholder="Nombre"></div>
         <div class="form-group"><label class="form-label">Apellidos</label><input id="mLastname" class="form-input" placeholder="Apellidos"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Email</label><input id="mEmail" type="email" class="form-input" placeholder="email@…"></div>
+        <div class="form-group"><label class="form-label">Email *</label><input id="mEmail" type="email" class="form-input" placeholder="email@…"></div>
         <div class="form-group"><label class="form-label">Teléfono</label><input id="mPhone" type="tel" class="form-input" placeholder="+34 …"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Fecha</label><input id="mDate" type="date" class="form-input"></div>
-        <div class="form-group"><label class="form-label">Hora</label><input id="mTime" type="time" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Fecha *</label><input id="mDate" type="date" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Hora *</label><input id="mTime" type="time" class="form-input"></div>
       </div>
       <div class="form-group"><label class="form-label">Personas</label><input id="mGuests" type="number" class="form-input" value="2" min="1" max="20"></div>
       <div class="form-group"><label class="form-label">Notas</label><textarea id="mNotes" class="form-input form-textarea" rows="2"></textarea></div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" id="saveReservaBtn">Crear reserva</button>
+        <button class="btn-primary" id="saveReservaBtn">Crear reserva confirmada</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal detalle reserva -->
+  <div id="bookingDetailModal" class="modal-overlay" style="display:none">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Detalle de la reserva</h3>
+        <button class="modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+      <div id="bookingDetailContent"></div>
+      <div class="btn-row" id="bookingDetailActions"></div>
     </div>
   </div>
 
