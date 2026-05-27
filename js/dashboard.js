@@ -372,7 +372,7 @@ function renderScheduleEditor() {
         <div class="interval-selector">
           ${[15,20,30,45,60,90].map(v => `
             <button type="button" class="interval-btn${scheduleData.interval === v ? ' active' : ''}"
-              onclick="setInterval(${v})">${v} min</button>
+              onclick="setBookingInterval(${v})">${v} min</button>
           `).join('')}
         </div>
       </div>
@@ -427,7 +427,7 @@ function renderTramoHTML(dayIdx, tramoIdx, tramo) {
   `;
 }
 
-window.setInterval = function(mins) {
+window.setBookingInterval = function(mins) {
   scheduleData.interval = mins;
   document.querySelectorAll('.interval-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
